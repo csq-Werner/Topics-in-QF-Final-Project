@@ -63,10 +63,10 @@ class DenseNet(nn.Module):
 		
 
 	def forward(self, x_layer, t_layer, r_layer, q_layer, paras_layer):
-		y_layer = []
+		y_layer = 0
 		mid = torch.cat([x_layer, t_layer, r_layer, q_layer, paras_layer], dim=-1)
 		for i in range(len(self.dense_layers1)):
-			y_layer.append(self.skip_layers1[i](mid))
+			y_layer += self.skip_layers1[i](mid)
 			mid = self.dense_layers1[i](mid)
 			mid = nn.SiLU(mid)
 		
@@ -93,11 +93,11 @@ class DenseNet(nn.Module):
 		mid = torch.cat([mid, singu, singu2], dim=-1)
 
 		for i in range(len(self.dense_layers2)):
-			y_layer.append(self.skip_layers2[i](mid))
+			y_layer += self.skip_layers2[i](mid)
 			mid = self.dense_layers2[i](mid)
 			mid = nn.SiLU(mid)
 		
-		y_layer.append(self.final_skip(mid))
+		y_layer += self.final_skip(mid)
 
 		return y_layer
 
@@ -373,58 +373,12 @@ class Pricer:
 
 	## neural network
 	def net_builder(self, layers1, layers2, numbers, initial = 'he_normal', batch_normal = False, drop_out = 0):
+		layer1_dims = [4 + len(self.model_paras)] + [numbers] * layers1
+		layer2_dims = [numbers + 3] + [numbers] * layers2
+
+		self.net = DenseNet(layer1_dims, layer2_dims, self.K, exercise=self.exercise)
+		return self.net
 		
-		x_layer = Input(shape = (1), dtype=self.dtype)
-		t_layer = Input(shape = (1), dtype=self.dtype)
-		r_layer = Input(shape = (1), dtype=self.dtype)
-		q_layer = Input(shape = (1), dtype=self.dtype)
-		paras_layer = Input(shape = (len(self.model_paras)), dtype=self.dtype)
-		mid = concatenate([x_layer, t_layer, r_layer, q_layer, paras_layer], axis = -1)
-		y_layer = 0
-
-		for i in range(layers1):
-			y_layer += Dense(1, dtype=self.dtype, kernel_initializer=initial)(mid)
-			mid = Dense(numbers, dtype=self.dtype, kernel_initializer=initial)(mid)
-			if batch_normal:
-					mid = BatchNormalization(dtype=self.dtype)(mid)
-			if drop_out:
-					mid = Dropout(drop_out)(mid)
-			mid = tf.nn.silu(mid)
-
-		## singular terms
-		mul = Dense(1, dtype=self.dtype, kernel_initializer=initial)(mid) + self.K/10
-		mul = tf.nn.softplus(mul) + 1e-6
-		bias = Dense(1, dtype=self.dtype, kernel_initializer=initial)(mid) 
-		euro_mul_s = tf.exp(-q_layer*t_layer) if self.exercise == 'European' else 1
-		euro_mul_k = tf.exp(-r_layer*t_layer) if self.exercise == 'European' else 1
-		scaled = (tf.exp(x_layer)*euro_mul_s - self.K*euro_mul_k + bias*t_layer)/(tf.sqrt(t_layer+1e-8))/mul
-		if self.cp == 'put':
-			scaled = -scaled 
-		singu = tf.nn.softplus(scaled) * (tf.sqrt(t_layer+1e-8)) * mul
-
-		mul2 = Dense(1, dtype=self.dtype, kernel_initializer=initial)(mid)+self.K/20
-		mul2 = tf.nn.softplus(mul2) + 1e-6
-		bias2 = Dense(1, dtype=self.dtype, kernel_initializer=initial)(mid)*self.K/10 
-		scaled2 = (tf.exp(x_layer)*euro_mul_s - self.K*euro_mul_k + bias2*t_layer)/(tf.sqrt(t_layer+1e-8))/mul2
-		if self.cp == 'put':
-			scaled2 = -scaled2 
-		singu2 = tf.nn.silu(scaled2) * (tf.sqrt(t_layer+1e-8)) * mul2
-
-		mid = concatenate([mid, singu, singu2], axis = -1)
-	
-		for i in range(layers2):
-				y_layer += Dense(1, dtype=self.dtype, kernel_initializer=initial)(mid)
-				mid = Dense(numbers, dtype=self.dtype, kernel_initializer=initial)(mid)
-				if batch_normal:
-						mid = BatchNormalization(dtype=self.dtype)(mid)
-				if drop_out:
-						mid = Dropout(drop_out)(mid)
-				mid = tf.nn.silu(mid)
-
-		y_layer += Dense(1, dtype=self.dtype, kernel_initializer=initial)(mid)
-
-		self.net = tf.keras.Model([x_layer, t_layer, r_layer, q_layer, paras_layer], y_layer)
-		self.net.summary() 
 
 	## functions of saving and loading
 	def set_name(self, name):
@@ -638,7 +592,7 @@ class Pricer:
 		return loss_root
 
 	## training function
-	def train(self, opt=tf.keras.optimizers.Adam(learning_rate=0.001), n_epochs = 30, batch_size = 200, 
+	def train(self, opt, n_epochs = 30, batch_size = 200, 
 						fix = False, weighted=False, plot_paras = []):  
 		
 		train_batches = tf.data.Dataset.from_tensor_slices(self.train_tensor).batch(batch_size,drop_remainder=True) 

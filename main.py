@@ -4,12 +4,12 @@ import os
 import numpy as np
 import scipy
 import sobol_seq
-
+import json
 import matplotlib.pyplot as plt
 import time
 import pickle
 from tqdm import tqdm
-
+import json
 from model.pricer import Pricer
 
 
@@ -28,17 +28,27 @@ if __name__ == "__main__":
     ## build the network
     obj.net_builder(3, 3, 500)
 
+    train_loss_list, val_loss_list = [], []
+
     ## train the network
     opt = tf.keras.optimizers.Adam(learning_rate=1e-3)
-    obj.train(opt = opt, n_epochs=15, plot_paras = plot_paras)
+    train_loss, val_loss = obj.train(opt = opt, n_epochs=15, plot_paras = plot_paras)
+    train_loss_list += train_loss
+    val_loss_list += val_loss
+
     opt = tf.keras.optimizers.Adam(learning_rate=tf.keras.optimizers.schedules.ExponentialDecay(1e-3, 15*(obj.train_size//200), 0.1))
-    obj.train(opt = opt, n_epochs=15, plot_paras = plot_paras)
+    train_loss, val_loss = obj.train(opt = opt, n_epochs=15, plot_paras = plot_paras)
+    train_loss_list += train_loss
+    val_loss_list += val_loss
+
     opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
-    obj.train(opt = opt, n_epochs=15, plot_paras = plot_paras)
+    train_loss, val_loss = obj.train(opt = opt, n_epochs=15, plot_paras = plot_paras)
+    train_loss_list += train_loss
+    val_loss_list += val_loss
 
     ## save the model
     obj.set_name(save_name)
-    obj.save_model()
+    obj.save_model(train_loss_list, val_loss_list)
 
     ## evaluate the model over the test set
     pred = obj.predict()
