@@ -4,7 +4,7 @@ import os
 import numpy as np
 import scipy
 import sobol_seq
-
+import json
 import matplotlib.pyplot as plt
 import time
 import pickle
@@ -341,7 +341,7 @@ class Pricer:
 	## functions of saving and loading
 	def set_name(self, name):
 		self.name = name
-	def save_model(self):
+	def save_model(self, train_loss_list, val_loss_list):
 		opt=tf.keras.optimizers.Adam()
 		checkpoint_directory = os.path.join(data_dir, self.name)
 		checkpoint_prefix = os.path.join(checkpoint_directory, "ckpt")
@@ -349,6 +349,12 @@ class Pricer:
 				os.makedirs(checkpoint_directory)
 		checkpoint = tf.train.Checkpoint(optimizer=opt, model=self.net)
 		checkpoint.save(file_prefix=checkpoint_prefix)  
+		with open(os.path.join(checkpoint_directory, "loss_list.json"), "w") as f:
+			loss_json = {
+				"train_loss": train_loss_list,
+				"val_loss": val_loss_list
+			}
+			json.dump(loss_json, f)
 	def load_model(self):
 		opt=tf.keras.optimizers.Adam()
 		checkpoint_directory = os.path.join(data_dir, self.name)
@@ -561,6 +567,7 @@ class Pricer:
 		x_sorted = np.sort(self.test_tensor['x'],axis=0)
 		S_sorted = np.exp(x_sorted)
 
+		train_loss_list = []
 		val_loss_list =[]
 		train_step = tf.function(self.train_step_raw) 
 		
@@ -581,10 +588,11 @@ class Pricer:
 				print("Epoch {:03d}: Train Loss: {:.5g}, Test Loss: {:.5g} ".format(epoch, np.mean(loss_list), np.mean(val_list)))
 				print('Time for epoch {:03d} is {:.5g} sec'.format(epoch, time.time()-start_time))
 				print("===========================================")   
-				val_loss_list.append(np.mean(val_list))
+				train_loss_list.append(float(np.mean(loss_list)))
+				val_loss_list.append(float(np.mean(val_list)))
 				
 				## plot fitted solution during training
 				for each in plot_paras:
 						self.plot(S_sorted = S_sorted, **each)
 
-		return val_loss_list
+		return train_loss_list, val_loss_list
