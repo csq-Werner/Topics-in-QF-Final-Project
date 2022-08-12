@@ -1,5 +1,5 @@
-import tensorflow as tf
-from tensorflow.keras.layers import *
+import torch
+import torch.nn as nn
 import os
 import numpy as np
 import scipy
@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import time
 import pickle
 from tqdm import tqdm
-import json
-from model.pricer import Pricer
+
+from model.pricer_pytorch import Pricer
 
 
 data_dir = './'
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     train_loss_list, val_loss_list = [], []
 
     ## train the network
-    opt = tf.keras.optimizers.Adam(learning_rate=1e-3)
+    opt = torch.optim.Adam(obj.net.parameters(), lr=1e-3)
     train_loss, val_loss = obj.train(opt = opt, n_epochs=15, plot_paras = plot_paras)
     train_loss_list += train_loss
     val_loss_list += val_loss
