@@ -1,2 +1,2 @@
 # Ignore Files
-*.pyc
+model/__pycache__/*.pyc
