@@ -1,3 +1,4 @@
+from cProfile import label
 import tensorflow as tf
 from tensorflow.keras.layers import *
 import os
@@ -390,9 +391,18 @@ class Pricer:
 
 		y = self.net([x, zeros + T, zeros + r, zeros + q, zeros + np.squeeze(value_list)])
 		price = self.benchmark(S_sorted, T=T, r=r, q=q, **value_dict)
-		plt.figure()
-		plt.plot((S_sorted), y.numpy(), S_sorted, price)
-		plt.show()
+		plt.subplot(2, 2, 1)
+		# plt.figure()
+		plt.plot((S_sorted), y.numpy(), label="fitted", color="dodgerblue")
+		plt.plot(S_sorted, price, label="benchmark", color="orange")
+		plt.legend()
+		plt.xlabel("Stock Price")
+		plt.subplot(2, 2, 2)
+		# plt.figure()
+		plt.plot(S_sorted, (y.numpy() - price) / price, label="relative error", color="dodgerblue")
+		plt.legend()
+		plt.xlabel("Stock Price")
+		
 		
 	## predict over a dataset
 	def predict(self, test_tensor=None):
@@ -592,7 +602,7 @@ class Pricer:
 				val_loss_list.append(float(np.mean(val_list)))
 				
 				## plot fitted solution during training
-				for each in plot_paras:
-						self.plot(S_sorted = S_sorted, **each)
+				# for each in plot_paras:
+				# 		self.plot(S_sorted = S_sorted, **each)
 
 		return train_loss_list, val_loss_list
