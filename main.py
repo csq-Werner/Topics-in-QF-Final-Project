@@ -18,7 +18,7 @@ data_dir = './'
 """## Training routine"""
 if __name__ == "__main__":
     ## create the pricer object
-    obj = Pricer(model='VG', cp='call', exercise='American')
+    obj = Pricer(model='NIG', cp='call', exercise='American')
     save_name = '_'.join([obj.model,obj.exercise[:2],obj.cp])
     plot_paras = [{'T':1}]
 
