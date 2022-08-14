@@ -12,7 +12,7 @@ from tqdm import tqdm
 import json
 from model.pricer import Pricer
 
-obj = Pricer(model='NIG', cp='call', exercise='American')
+obj = Pricer(model='Kou', cp='call', exercise='American')
 save_name = '_'.join([obj.model,obj.exercise[:2],obj.cp])
 obj.data_preparer(train_size=50000,test_size=100)
 obj.net_builder(3, 3, 500)
