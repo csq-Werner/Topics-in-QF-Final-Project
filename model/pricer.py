@@ -399,6 +399,7 @@ class Pricer:
 		plt.xlabel("Stock Price")
 		plt.subplot(2, 2, 2)
 		# plt.figure()
+
 		plt.plot(S_sorted, (y.numpy() - price) / price, label="relative error", color="dodgerblue")
 		plt.legend()
 		plt.xlabel("Stock Price")
